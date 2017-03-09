@@ -276,8 +276,11 @@ module MCollective
       #
       # @return [Array<String>] list of servers in form of a URI
       def server_list
-        File.open('/etc/mcollective/nats_server_uri_list') do |f|
-          f.read.split(/\n/).reject { |l| l.chomp.empty? }.map { |uri| URI(uri) }
+        num_servers = @config.pluginconf['nats.server_pool_size'].to_i
+        raise 'NATS connector requires nats.server_pool_size config' if num_servers == 0
+
+        1.upto(num_servers).map do |i|
+          URI(@config.pluginconf["nats.server.#{i}"])
         end
       end
 
