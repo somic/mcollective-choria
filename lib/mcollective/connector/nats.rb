@@ -1,5 +1,5 @@
 require "resolv"
-require_relative "../util/natswrapper"
+require "mcollective/natswrapper"
 
 module MCollective
   module Connector
