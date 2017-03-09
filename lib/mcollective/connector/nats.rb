@@ -1,5 +1,4 @@
 require "resolv"
-require_relative "../util/choria"
 require_relative "../util/natswrapper"
 
 module MCollective
@@ -71,7 +70,7 @@ module MCollective
         parameters = {
           :max_reconnect_attempts => -1,
           :reconnect_time_wait => 1,
-          :dont_randomize_servers => !choria.randomize_middleware_servers?,
+          :dont_randomize_servers => false,
           :name => @config.identity,
           :tls => {
             :context => ssl_context
@@ -84,8 +83,6 @@ module MCollective
           Log.debug("Connecting to servers: %s" % servers.join(", "))
           parameters[:servers] = servers
         end
-
-        choria.check_ssl_setup
 
         connection.start(parameters)
 
@@ -102,11 +99,7 @@ module MCollective
       # @return [OpenSSL::SSL::SSLContext]
       def ssl_context
         context = OpenSSL::SSL::SSLContext.new
-        context.ca_file = choria.ca_path
-        context.cert = OpenSSL::X509::Certificate.new(File.read(choria.client_public_cert))
-        context.key = OpenSSL::PKey::RSA.new(File.read(choria.client_private_key))
-        context.verify_mode = OpenSSL::SSL::VERIFY_PEER
-
+        context.ssl_version = :TLSv1_2
         context
       end
 
@@ -286,29 +279,9 @@ module MCollective
       #
       # @return [Array<String>] list of servers in form of a URI
       def server_list
-        uris = choria.middleware_servers("puppet", "4222").map do |host, port|
-          URI("nats://%s:%s" % [host, port])
+        File.open('/etc/mcollective/nats_server_uri_list') do |f|
+          f.read.split(/\n/).map { |uri| URI(uri) }
         end
-
-        decorate_servers_with_users(uris).map(&:to_s)
-      end
-
-      # Add user and pass to a series of URIs
-      #
-      # @param servers [Array<URI>] list of URI's to decorate
-      # @return [Array<URI>]
-      def decorate_servers_with_users(servers)
-        user = get_option("nats.user", environment["MCOLLECTIVE_NATS_USERNAME"])
-        pass = get_option("nats.pass", environment["MCOLLECTIVE_NATS_PASSWORD"])
-
-        if user && pass
-          servers.each do |uri|
-            uri.user = user
-            uri.password = pass
-          end
-        end
-
-        servers
       end
 
       # Retrieves the environment, mainly used for testing
@@ -329,9 +302,6 @@ module MCollective
         raise("No plugin.%s configuration option given" % opt)
       end
 
-      def choria
-        @_choria ||= Util::Choria.new("production", nil, false)
-      end
     end
   end
 end
