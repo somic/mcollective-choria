@@ -72,9 +72,6 @@ module MCollective
           :reconnect_time_wait => 1,
           :dont_randomize_servers => false,
           :name => @config.identity,
-          :tls => {
-            :context => ssl_context
-          }
         }
 
         servers = server_list
