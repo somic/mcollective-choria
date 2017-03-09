@@ -280,7 +280,7 @@ module MCollective
       # @return [Array<String>] list of servers in form of a URI
       def server_list
         File.open('/etc/mcollective/nats_server_uri_list') do |f|
-          f.read.split(/\n/).map { |uri| URI(uri) }
+          f.read.split(/\n/).reject { |l| l.chomp.empty? }.map { |uri| URI(uri) }
         end
       end
 
